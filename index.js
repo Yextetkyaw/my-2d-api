@@ -135,3 +135,4 @@ module.exports = async (req, res) => {
             time: timeData.time
         }
     });
+};
