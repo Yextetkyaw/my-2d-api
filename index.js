@@ -11,13 +11,13 @@ module.exports = async (req, res) => {
     let set = "-";
     let value = "-";
     let twod = "-";
-    let dataSource = "unknown"; // ဒေတာဘယ်ကရလဲ သိစေမယ့် variable
+    let dataSource = "unknown";
 
     const headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     };
 
-    // --- ၁။ Time API ကနေ ဒေတာဆွဲခြင်း ---
+    // Time API ကနေ ဒေတာဆွဲခြင်း
     try {
         const timeResponse = await axios.get('https://time-api-42d.vercel.app/api/time', { timeout: 4000 });
         if (timeResponse.status === 200) {
@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
         }
     } catch (e) {}
 
-    // --- ၂။ နည်းလမ်း (၁) - မူလ SET Home Page ကနေ ဒေတာဆွဲခြင်း ---
+    // နည်းလမ်း (၁) - မူလ Home Page ကနေ ဒေတာဆွဲခြင်း
     let success = false;
     try {
         const response = await axios.get('https://www.set.or.th/en/home', { headers, timeout: 6000 });
@@ -65,14 +65,14 @@ module.exports = async (req, res) => {
         success = false;
     }
 
-    // --- ၃။ နည်းလမ်း (၂) - ၁ မရခဲ့လျှင် Overview Page ကနေ Backup ဆွဲခြင်း ---
+    // နည်းလမ်း (၂) - ၁ မရခဲ့လျှင် Overview Page ကနေ Backup ဆွဲခြင်း
     if (!success || set === "-" || value === "-") {
         try {
             const backupUrl = 'https://www.set.or.th/en/market/index/set/overview';
             const response = await axios.get(backupUrl, { headers, timeout: 6000 });
             const $ = cheerio.load(response.data);
 
-            // SET ကိုယူခြင်း
+            // SET ကို ယူခြင်း
             const setBox = $('.stock-info, .value.stock-info');
             if (setBox.length > 0) {
                 set = setBox.first().text().trim();
@@ -84,7 +84,7 @@ module.exports = async (req, res) => {
                 marketStatus = statusSpan.first().text().trim();
             }
 
-            // Value (M.Baht) ကို ယူခြင်း
+            // Value ကို ယူခြင်း
             const valueSpan = $('.quote-market-cost span');
             if (valueSpan.length > 0) {
                 value = valueSpan.text().trim();
@@ -98,7 +98,7 @@ module.exports = async (req, res) => {
         }
     }
 
-    // --- ၄။ 2D ဂဏန်း တွက်ချက်ခြင်း စနစ် ---
+    // 2D ဂဏန်း တွက်ချက်ခြင်း စနစ်
     if (set !== "-" && value !== "-") {
         const setLastDigit = set.slice(-1);
         let valueBeforeDecimalDigit = "-";
@@ -112,9 +112,9 @@ module.exports = async (req, res) => {
         twod = setLastDigit + valueBeforeDecimalDigit;
     }
 
-    // --- ၅။ ရလဒ်ကို ပေးပို့ခြင်း ---
+    // ရလဒ်ကို ပေးပို့ခြင်း
     return res.status(200).json({
-        data_source: dataSource, // ဘယ်လင့်ခ်ကနေ ဒေတာရလဲဆိုတာ ပြပေးမယ့် Key အသစ်
+        data_source: dataSource, // ဘယ်လင့်ခ်ကနေ ဒေတာရလဲဆိုတာ ပြပေးမယ့် key
         status: marketStatus,
         set: set,
         value: value,
