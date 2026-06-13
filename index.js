@@ -116,7 +116,12 @@ module.exports = async (req, res) => {
             twod = setLastDigit + valueBeforeDecimalDigit; // ဒေတာစုံရင် "11"
         }
     }
-
+    // Market Status က Closed ဖြစ်နေလျှင် set,value,2d ဒေတာများကို -- သို့ပြောင်းလဲခြင်း
+    if (marketStatus === "Closed") {
+        set = "--";
+        value = "--";
+        twod = "--";
+    }
     // ရလဒ်ကို ပေးပို့ခြင်း
     return res.status(200).json({
         data_source: dataSource, // ဘယ်လင့်ခ်ကနေ ဒေတာရလဲဆိုတာ ပြပေးမယ့် key
