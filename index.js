@@ -12,6 +12,10 @@ module.exports = async (req, res) => {
     let value = "-";
     let twod = "null";
     let dataSource = "unknown";
+    
+    // Result အသစ်များအတွက် Variable သတ်မှတ်ခြင်း
+    let noonResult = null;
+    let eveningResult = null;
 
     const headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -28,6 +32,17 @@ module.exports = async (req, res) => {
             };
         }
     } catch (e) {}
+
+    // 2D History API ကနေ Noon နဲ့ Evening ဒေတာများ ဆွဲယူခြင်း
+    try {
+        const historyResponse = await axios.get('https://2d-history-api.vercel.app/', { timeout: 4000 });
+        if (historyResponse.status === 200 && historyResponse.data) {
+            noonResult = historyResponse.data.noon_record_data || null;
+            eveningResult = historyResponse.data.evening_record_data || null;
+        }
+    } catch (e) {
+        // API တက်မလာရင် သို့မဟုတ် Timeout ဖြစ်ရင် null အဖြစ်ပဲ ထားရှိပါမယ်
+    }
 
     // နည်းလမ်း (၁) - မူလ Home Page ကနေ ဒေတာဆွဲခြင်း
     let success = false;
@@ -98,7 +113,7 @@ module.exports = async (req, res) => {
         }
     }
 
-        // 2D ဂဏန်း တွက်ချက်ခြင်း
+    // 2D ဂဏန်း တွက်ချက်ခြင်း
     if (set !== "-") {
         const setLastDigit = set.slice(-1); // SET ရဲ့ နောက်ဆုံးလုံးကို ယူတယ်
         let valueBeforeDecimalDigit = "-";
@@ -116,12 +131,14 @@ module.exports = async (req, res) => {
             twod = setLastDigit + valueBeforeDecimalDigit; // ဒေတာစုံရင် "11"
         }
     }
+
     // Market Status က Closed ဖြစ်နေလျှင် set,value,2d ဒေတာများကို -- သို့ပြောင်းလဲခြင်း
     if (marketStatus === "Closed") {
         set = "--";
         value = "--";
         twod = "--";
     }
+
     // ရလဒ်ကို Live Object အဖြစ် ပေးပို့ခြင်း
     return res.status(200).json({
         live: {
@@ -133,6 +150,8 @@ module.exports = async (req, res) => {
             datetime: timeData.datetime,
             date: timeData.date,
             time: timeData.time
-        }
+        },
+        noon_result: noonResult,
+        evening_result: eveningResult
     });
 };
