@@ -22,6 +22,9 @@ module.exports = async (req, res) => {
 
     let hasHistory = false;
     let historyList = [];
+    
+    let noon_result = null;
+    let evening_result = null;
 
     const headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -109,46 +112,68 @@ module.exports = async (req, res) => {
 
     // ၅။ Redis ကိုသုံးပြီး History စီမံခန့်ခွဲခြင်း လုပ်ငန်းစဉ်
     try {
-        // Redis List ထဲက နောက်ဆုံးထည့်ထားတဲ့ (အပေါ်ဆုံး) ဒေတာကို လှမ်းဖတ်တယ်
         const latestHistory = await redis.lindex('2d_history_list', 0);
 
         if (twod && twod !== "null" && twod !== "--" && twod !== "-") {
             let isDataChanged = true;
 
             if (latestHistory) {
-                // ဒေတာအဟောင်း ရှိခဲ့ရင် အသစ်နဲ့ ကိုက်ညီမှု ရှိမရှိ စစ်တယ်
                 isDataChanged = latestHistory["2d"] !== twod || latestHistory["set"] !== set;
             }
 
             if (isDataChanged) {
-                // 1 စီတိုးမယ့် History ID ကို Redis မှာ Auto Increment (`incr`) လုပ်ပြီး ယူတယ်
                 const nextHistoryId = await redis.incr('next_history_id');
 
+                // history_id ကို အောက်ဆုံးသို့ ရွှေ့လိုက်ပါသည်
                 const newHistoryItem = {
-                    history_id: nextHistoryId,
                     set: set,
                     value: value,
                     "2d": twod,
                     datetime: timeData.datetime,
                     date: timeData.date,
-                    time: timeData.time
+                    time: timeData.time,
+                    history_id: nextHistoryId
                 };
 
-                // ဒေတာအသစ်ကို List ရဲ့ အရှေ့ဆုံး (အပေါ်ဆုံး) ကို ထည့်တယ် (LPUSH)
                 await redis.lpush('2d_history_list', newHistoryItem);
-
-                // ဒေတာ အရေအတွက် အခု ၅၀ ပဲ ရှိနေစေဖို့ အောက်ကပိုနေတာတွေကို ဖြတ်ထုတ်တယ် (LTRIM)
                 await redis.ltrim('2d_history_list', 0, 49);
             }
         }
 
-        // Response ပြန်ဖို့အတွက် Redis ကနေ List တစ်ခုလုံး (0 ကနေ 49 ထိ) ကို ပြန်ခေါ်တယ်
         historyList = await redis.lrange('2d_history_list', 0, 49);
         hasHistory = historyList.length > 0;
 
+        // ၆။ Noon Result နှင့် Evening Result အတွက် အချိန်စစ်ဆေးပြီး သိမ်းဆည်းခြင်း လုပ်ငန်းစဉ်
+        if (timeData.date && latestHistory && latestHistory.date !== timeData.date) {
+            await redis.del('noon_result');
+            await redis.del('evening_result');
+        }
+
+        noon_result = await redis.get('noon_result');
+        evening_result = await redis.get('evening_result');
+
+        for (let item of historyList) {
+            const itemTime = item.time;
+
+            if (itemTime) {
+                if (!noon_result && itemTime >= "12:01:00" && itemTime <= "12:01:30") {
+                    noon_result = item;
+                    await redis.set('noon_result', noon_result);
+                }
+
+                if (!evening_result && itemTime >= "16:30:00" && itemTime <= "16:30:30") {
+                    evening_result = item;
+                    await redis.set('evening_result', evening_result);
+                }
+            }
+            
+            if (noon_result && evening_result) {
+                break;
+            }
+        }
+
     } catch (redisError) {
         console.error("Redis Error:", redisError);
-        // Redis Error တက်ခဲ့ရင် API Crash မဖြစ်အောင် ဖမ်းထားပြီး ဒေတာအလွတ် ပြန်ပေးမယ်
         historyList = [];
         hasHistory = false;
     }
@@ -164,6 +189,8 @@ module.exports = async (req, res) => {
             date: timeData.date,
             time: timeData.time
         },
+        noon_result: noon_result,
+        evening_result: evening_result,
         hasHistory: hasHistory,
         historyList: historyList
     });
