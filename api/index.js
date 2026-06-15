@@ -2,17 +2,19 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const { Redis } = require('@upstash/redis');
 
-// Upstash Redis Connection
+// [DATABASE CONNECTION] Upstash Redis ချိတ်ဆက်ခြင်း
 const redis = new Redis({
     url: process.env.KV_REST_API_URL,
     token: process.env.KV_REST_API_TOKEN,
 });
 
 module.exports = async (req, res) => {
+    // CORS Header နှင့် Response Format သတ်မှတ်ခြင်း
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
     res.setHeader('Content-Type', 'application/json');
 
+    // Live Data အတွက် Variable များ တည်ဆောက်ခြင်း
     let timeData = { datetime: null, date: null, time: null };
     let marketStatus = "null";
     let set = "-";
@@ -23,7 +25,11 @@ module.exports = async (req, res) => {
     let hasHistory = false;
     let historyList = [];
     
-    // ဒေတာ မရှိသေးတဲ့အချိန်တွင် ပြသမည့် Default ပုံစံ
+    // Variable အသစ်များ တည်ဆောက်ခြင်း
+    let apiStatus = "No Status";
+    let ifError = "No Error";
+    
+    // ဒေတာ မရှိသေးသည့်အချိန် သို့မဟုတ် Null ဖြစ်နေချိန်တွင် ပြသမည့် Default ပုံစံ
     const defaultResult = {
         set: "--",
         value: "--",
@@ -37,11 +43,12 @@ module.exports = async (req, res) => {
     let noon_result = null;
     let evening_result = null;
 
+    // Web Scraping လုပ်ရာတွင် ပိတ်ပင်မခံရစေရန် Browser ပုံစံဖန်တီးသည့် Headers
     const headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     };
 
-    // Time API မှ ဒေတာဆွဲခြင်း
+    // [SECTION 1] TIME API မှ လက်ရှိအချိန် ဒေတာတောင်းယူခြင်း
     try {
         const timeResponse = await axios.get('https://time-api-42d.vercel.app/api/time', { timeout: 4000 });
         if (timeResponse.status === 200) {
@@ -51,14 +58,17 @@ module.exports = async (req, res) => {
                 time: timeResponse.data.time
             };
         }
-    } catch (e) {}
+    } catch (e) {
+        ifError = "[SECTION 1] Time API Fetch Error: " + e.message;
+    }
 
-    // SET Home Page မှ ဒေတာဆွဲခြင်း (Web Scraping ချက်ချင်း ပုံမှန်အလုပ်လုပ်မည်)
+    // [SECTION 2] WEB SCRAPING - ထိုင်း SET Home Page မှ ဒေတာဆွဲခြင်း
     let success = false;
     try {
         const response = await axios.get('https://www.set.or.th/en/home', { headers, timeout: 6000 });
         const $ = cheerio.load(response.data);
 
+        // Market Status (Open/Closed/Pre-Open1) ကို ရှာဖွေဖတ်ယူခြင်း
         $('div.text-black').each((i, el) => {
             const divText = $(el).text();
             if (divText.includes("Market Status")) {
@@ -67,6 +77,7 @@ module.exports = async (req, res) => {
             }
         });
 
+        // SET Index နှင့် Value ဒေတာများကို ဇယားထဲမှ ရှာဖွေဖတ်ယူခြင်း
         $('tr').each((i, el) => {
             const indexTd = $(el).find('td.title-symbol');
             if (indexTd.length > 0 && indexTd.text().trim() === 'SET') {
@@ -80,9 +91,12 @@ module.exports = async (req, res) => {
                 }
             }
         });
-    } catch (e) { success = false; }
+    } catch (e) { 
+        if (ifError === "No Error") ifError = "[SECTION 2] Home Page Scraping Error: " + e.message;
+        success = false; 
+    }
 
-    // Backup အဖြစ် Overview Page မှ ဆွဲခြင်း
+    // [SECTION 3] BACKUP SCRAPING - Home Page မရပါက Overview Page မှ ထပ်ဆွဲခြင်း
     if (!success || set === "-" || value === "-") {
         try {
             const backupUrl = 'https://www.set.or.th/en/market/index/set/overview';
@@ -98,42 +112,52 @@ module.exports = async (req, res) => {
             const valueSpan = $('.quote-market-cost span');
             if (valueSpan.length > 0) value = valueSpan.text().trim();
             dataSource = "set overview";
-        } catch (e) {}
+        } catch (e) {
+            if (ifError === "No Error") ifError = "[SECTION 3] Overview Page Scraping Error: " + e.message;
+        }
     }
 
-    // 2D တွက်ချက်ခြင်း
-    if (set !== "-") {
-        const setLastDigit = set.slice(-1);
-        let valueBeforeDecimalDigit = "-";
+    // [SECTION 4] 2D DATA CALCULATION - လိုက်ဗ် 2D ဂဏန်းတွက်ချက်ခြင်း
+    try {
+        if (set !== "-") {
+            const setLastDigit = set.slice(-1); 
+            let valueBeforeDecimalDigit = "-";
 
-        if (value !== "-" && value.includes('.')) {
-            const decimalIndex = value.indexOf('.');
-            valueBeforeDecimalDigit = value.charAt(decimalIndex - 1);
-        }
+            if (value !== "-" && value.includes('.')) {
+                const decimalIndex = value.indexOf('.');
+                valueBeforeDecimalDigit = value.charAt(decimalIndex - 1); 
+            }
 
-        if (value === "-") {
-            twod = setLastDigit + "-";
-        } else {
-            twod = setLastDigit + valueBeforeDecimalDigit;
+            if (value === "-") {
+                twod = setLastDigit + "-";
+            } else {
+                twod = setLastDigit + valueBeforeDecimalDigit;
+            }
         }
+    } catch (e) {
+        if (ifError === "No Error") ifError = "[SECTION 4] 2D Calculation Error: " + e.message;
     }
     
+    // [SECTION 5] MARKET STATUS CONDITIONS - အခြေအနေအလိုက် ဒေတာထိန်းညှိခြင်း
+    
+    // (က) ဈေးကွက်ပြင်ဆင်ချိန် (Pre-Open1) ဖြစ်နေစဉ် Value ထဲတွင် - ပါဝင်နေပါက သို့မဟုတ် ဒဿမမပါပါက "-" အတိုင်း ပြရန်
     if (marketStatus && marketStatus.includes("Pre-Open1")) {
         if (value.includes('-') || !value.includes('.')) {
-    value = "-";
-}
+            value = "-";
+        }
     }
     
-    if (marketStatus && marketStatus.includes("Closed")) {
+    // (ခ) ဈေးကွက်ပိတ်သွားပါက (Closed) လိုက်ဗ်ဒေတာအားလုံးကို "--" သို့ ပြောင်းလဲရန်
+    if (marketStatus === "Closed") {
         set = "--"; value = "--"; twod = "--";
     }
 
-    // Redis History စီမံခန့်ခွဲခြင်း လုပ်ငန်းစဉ်
+    // [SECTION 6] REDIS DATABASE OPERATIONS - ဒေတာဘေ့စ် သိမ်းဆည်း/ထုတ်ယူခြင်း
     try {
         let latestHistory = await redis.lindex('2d_history_list', 0);
         const hasHistoryInDb = await redis.exists('2d_history_list');
 
-        // ရက်အသစ်ရောက်လျှင် ဖျက်ခြင်း (ဒေတာရှိမှ ဖျက်မည်)
+        //  ည 12 နာရီ တွင် ရက်အသစ်ကူးပြောင်းသွားပါက History List အဟောင်းများအား ဖျက်ထုတ်ခြင်း
         if (timeData.date && latestHistory && latestHistory.date !== timeData.date) {
             if (hasHistoryInDb) {
                 await redis.del('2d_history_list');
@@ -143,11 +167,14 @@ module.exports = async (req, res) => {
                 await redis.del('next_history_id');
             }
             latestHistory = null;
+            // 🌟 Status (၅) သတ်မှတ်ချက်
+            apiStatus = "( 5 ) History data rested";
         }
 
-        // Value ထဲမှာ ဒဿမအမှတ် (.) ပါဝင်ပြီး '-' မဟုတ်မှသာ ဒေတာအသစ်သွင်းမည်
+        // Value ထဲတွင် ဒဿမပါဝင်ပြီး ဒေတာအမှန်ဖြစ်မှသာ ဒေတာအသစ် သွင်းမည်
         const isValidValue = value !== "-" && value !== "--" && value.includes('.');
 
+        // live ဒေတာ အပြောင်းအလဲရှိပါက History List ထဲသို့ အသစ်တိုးမြှင့်ထည့်သွင်းခြင်း
         if (twod && twod !== "null" && twod !== "--" && twod !== "-" && isValidValue) {
             let isDataChanged = true;
 
@@ -169,52 +196,67 @@ module.exports = async (req, res) => {
                 };
 
                 await redis.lpush('2d_history_list', newHistoryItem);
-                await redis.ltrim('2d_history_list', 0, 29);
+                await redis.ltrim('2d_history_list', 0, 29); // ဒေတာကို အခု ၃၀ သာ ကန့်သတ်သိမ်းဆည်းခြင်း
             }
         }
 
+        // Database မှ History List (နောက်ဆုံးအကြိမ် ၃၀) ကို ပြန်ထုတ်ယူခြင်း
         historyList = await redis.lrange('2d_history_list', 0, 29);
         hasHistory = historyList.length > 0;
 
         const storedNoon = await redis.get('noon_result');
         const storedEvening = await redis.get('evening_result');
 
-        // ဈေးကွက်ဖွင့်ချိန်တွင် ဒေတာဟောင်းများကို ဖျက်ခြင်း (ဒေတာရှိမှ ဖျက်မည်)
-        if (marketStatus && marketStatus.includes("Pre-Open1")) {
+        // မနက် ၉:၀၀ တွင် ဈေးကွက်ပြန်ပွင့်ချိန် လိုက်ဗ်ဒေတာနေ့က နေ့လယ်/ညနေ Result အဟောင်းများကို ရှင်းလင်းခြင်း
+        if (marketStatus !== "Closed") {
             if (storedNoon && timeData.date && storedNoon.date !== timeData.date) {
                 await redis.del('noon_result');
+                
+                // Result ဖျက်ပြီး History ထဲမှာ data မရှိသေးရင် Status (၁)၊ ရှိရင် Status (၂)
+                if (historyList.length === 0) {
+                    apiStatus = "( 1 ) Result Data rested , History No Data";
+                } else {
+                    apiStatus = "( 2 ) Result Data rested , History Data Claimed";
+                }
             }
             if (storedEvening && timeData.date && storedEvening.date !== timeData.date) {
                 await redis.del('evening_result');
+                
+                if (historyList.length === 0) {
+                    apiStatus = "( 1 ) Result Data rested , History No Data";
+                } else {
+                    apiStatus = "( 2 ) Result Data rested , History Data Claimed";
+                }
             }
         }
 
-        // နောက်ဆုံးအခြေအနေကို Database မှ ပြန်ဖတ်ခြင်း
+        // နောက်ဆုံးသိမ်းဆည်းထားသော ပိတ်ဂဏန်းဒေတာများကို Database မှ ပြန်ဖတ်ခြင်း
         noon_result = await redis.get('noon_result');
         evening_result = await redis.get('evening_result');
 
         const currentTime = timeData.time;
 
-        // 🌟 [မိနစ်အပိုင်းအခြားကို ၂ မိနစ်စာ ပိုကျယ်ပေးထားခြင်း]
+        // သတ်မှတ်အချိန်အတွင်း ရောက်ပါက History ထဲမှ နေ့လယ်/ညနေ ပိတ်ဂဏန်းကို ရှာဖွေထုတ်ယူခြင်း
         const isNoonTimeRange = currentTime && currentTime >= "12:01:00" && currentTime <= "12:02:00";
         const isEveningTimeRange = currentTime && currentTime >= "16:30:00" && currentTime <= "16:31:00";
 
         if (noon_result && evening_result) {
-            // Do nothing
+            // ဒေတာ ၂ ခုလုံး ရှိပြီးသားဖြစ်ပါက ဘာမှမလုပ်ပါ
         } 
         else if ((!noon_result && isNoonTimeRange) || (!evening_result && isEveningTimeRange)) {
             
+            // History စာရင်းထဲမှ အချိန်ကွက်တိကို လှည့်ပတ်ရှာဖွေခြင်း Loop
             for (let item of historyList) {
                 const itemTime = item.time;
 
                 if (itemTime) {
-                    // မနက်ပိုင်း- History ထဲကအချိန်ကို ကိုက်ညီမှု ရှာဖွေခြင်း
+                    // မနက်ပိုင်း (နေ့လယ်ပိတ်ဂဏန်း) အတွက် History ထဲမှ ရှာဖွေသိမ်းဆည်းခြင်း
                     if (!noon_result && isNoonTimeRange && itemTime >= "12:01:00" && itemTime <= "12:02:00") {
                         noon_result = item;
                         await redis.set('noon_result', noon_result);
                     }
 
-                    // ညနေပိုင်း- History ထဲကအချိန်ကို ကိုက်ညီမှု ရှာဖွေခြင်း
+                    // ညနေပိုင်း (ညနေပိတ်ဂဏန်း) အတွက် History ထဲမှ ရှာဖွေသိမ်းဆည်းခြင်း
                     if (!evening_result && isEveningTimeRange && itemTime >= "16:30:00" && itemTime <= "16:31:00") {
                         evening_result = item;
                         await redis.set('evening_result', evening_result);
@@ -222,22 +264,30 @@ module.exports = async (req, res) => {
                 }
                 
                 if (noon_result && evening_result) {
-                    break;
+                    break; // ဒေတာစုံသွားပါက Loop ပတ်ခြင်းကို ရပ်တန့်မည်
                 }
             }
         }
 
+        // ဒေတာယူပြီးသွားချိန် Status သတ်မှတ်မိနစ်အတွင်း
+        if (noon_result && noon_result.set !== "--" && isNoonTimeRange) {
+            apiStatus = "( 3 ) 12:01 Result Data Saved"; // Status (၃)
+        }
+        if (evening_result && evening_result.set !== "--" && isEveningTimeRange) {
+            apiStatus = "( 4 ) 04:30 Result data saved"; // Status (၄)
+        }
+
     } catch (redisError) {
-        console.error("Redis Error:", redisError);
+        if (ifError === "No Error") ifError = "[SECTION 6] Redis Database Operation Error: " + redisError.message;
         historyList = [];
         hasHistory = false;
     }
 
-    // ဒေတာ null ဖြစ်နေရင် defaultResult (-- ပုံစံ) ကို လမ်းကြောင်းလွှဲပြီး အစားထိုးခြင်း
+    // ဒေတာ Null ဖြစ်နေရင် defaultResult (-- ပုံစံ) ကို လမ်းကြောင်းလွှဲပြီး အစားထိုးခြင်း
     const finalNoonResult = (noon_result && noon_result.set) ? noon_result : defaultResult;
     const finalEveningResult = (evening_result && evening_result.set) ? evening_result : defaultResult;
 
-    // JSON Response ပြန်လည်ပေးပို့ခြင်း
+    // [SECTION 7] FINAL RESPONSE - ကာစတမ်မာထံ JSON အဖြေ ပြန်လည်ပေးပို့ခြင်း
     return res.status(200).json({
         live: {
             data_source: dataSource,
@@ -251,6 +301,8 @@ module.exports = async (req, res) => {
         },
         noon_result: finalNoonResult,
         evening_result: finalEveningResult,
+        apiStatus: apiStatus,
+        ifError: ifError,
         hasHistory: hasHistory,
         historyList: historyList
     });
