@@ -14,8 +14,20 @@ module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET');
     res.setHeader('Content-Type', 'application/json');
 
-    // Response ပေးတဲ့အခါ ၅ စက္ကန့် Cache စောင့်ခိုင်းမည့် Header (ဥပမာ)
-res.setHeader('Cache-Control', 's-maxage=5, stale-while-revalidate');
+    // Result ဖမ်းမည့်အချိန်များတွင် Cache လုံးဝမလုပ်ဘဲ Live အတိုင်းသွားရန်
+    const nowTime = timeData.time; // လက်ရှိအချိန်ကို ယူတယ်
+    
+    // နေ့လယ် (12:01 မှ 12:02) နှင့် ညနေ (16:30 မှ 16:31) အတွင်းဖြစ်ပါက Cache မလုပ်ပါ (No Cache)
+    const isNoonResultTime = nowTime && nowTime >= "12:01:00" && nowTime <= "12:02:00";
+    const isEveningResultTime = nowTime && nowTime >= "16:30:00" && nowTime <= "16:31:00";
+
+    if (isNoonResultTime || isEveningResultTime) {
+        // Result ထွက်ရမည့် အရေးကြီးချိန်တွင် Cache လုံးဝပိတ်ပြီး Live တိုက်ရိုက်ဆွဲမည်
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    } else {
+        // ပုံမှန်အချိန်များတွင်မူ ဒေတာဘေ့စ်ကို ကာကွယ်ရန် ၅ စက္ကန့် Cache ဖွင့်ထားမည်
+        res.setHeader('Cache-Control', 's-maxage=5, stale-while-revalidate');
+    }
     
     // Live Data အတွက် Variable များ တည်ဆောက်ခြင်း
     let timeData = { datetime: null, date: null, time: null };
