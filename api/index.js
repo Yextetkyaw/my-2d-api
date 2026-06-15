@@ -208,7 +208,7 @@ module.exports = async (req, res) => {
         const storedEvening = await redis.get('evening_result');
 
         // မနက် ၉:၀၀ တွင် ဈေးကွက်ပြန်ပွင့်ချိန် လိုက်ဗ်ဒေတာနေ့က နေ့လယ်/ညနေ Result အဟောင်းများကို ရှင်းလင်းခြင်း
-        if (marketStatus !== "Closed") {
+        if (marketStatus && marketStatus.includes("Pre-Open1")) {
             if (storedNoon && timeData.date && storedNoon.date !== timeData.date) {
                 await redis.del('noon_result');
                 
