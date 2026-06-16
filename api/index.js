@@ -56,12 +56,11 @@ module.exports = async (req, res) => {
         }
     } catch (e) {}
 
-    // Result ဖမ်းမည့်အချိန်များတွင် Cache လုံးဝမလုပ်ဘဲ Live အတိုင်းသွားရန်
-    const nowTime = timeData.time; // လက်ရှိအချိန်ကို ယူတယ်
+    const currentTime = timeData.time; // လက်ရှိအချိန်ကို ယူတယ်
     
     // နေ့လယ် (12:00 မှ 12:03) နှင့် ညနေ (16:29 မှ 16:33) အတွင်းဖြစ်ပါက Cache မလုပ်ပါ (No Cache)
-    const isNoonResultTime = nowTime && nowTime >= "12:00:00" && nowTime <= "12:03:00";
-    const isEveningResultTime = nowTime && nowTime >= "16:29:00" && nowTime <= "16:32:00";
+    const isNoonResultTime = currentTime  && currentTime  >= "12:00:00" && currentTime  <= "12:03:00";
+    const isEveningResultTime = currentTime  && currentTime  >= "16:29:00" && currentTime  <= "16:32:00";
 
     if (isNoonResultTime || isEveningResultTime) {
         // Result ထွက်ရမည့် အရေးကြီးချိန်တွင် Cache လုံးဝပိတ်ပြီး Live တိုက်ရိုက်ဆွဲမည်
@@ -206,11 +205,9 @@ module.exports = async (req, res) => {
         noon_result = await redis.get('noon_result');
         evening_result = await redis.get('evening_result');
 
-        const currentTime = timeData.time;
-
         // သတ်မှတ်အချိန်အတွင်း ရောက်ပါက History ထဲမှ နေ့လယ်/ညနေ ပိတ်ဂဏန်းကို ရှာဖွေထုတ်ယူခြင်း
-        const isNoonTimeRange = currentTime && currentTime >= "12:01:00" && currentTime <= "12:03:00";
-        const isEveningTimeRange = currentTime && currentTime >= "16:30:00" && currentTime <= "16:32:00";
+        const isNoonTimeRange = currentTime && currentTime >= "12:01:00" && currentTime <= "12:02:00";
+        const isEveningTimeRange = currentTime && currentTime >= "16:30:00" && currentTime <= "16:31:00";
 
         if (noon_result && evening_result) {
             // ဒေတာ ၂ ခုလုံး ရှိပြီးသားဖြစ်ပါက ဘာမှမလုပ်ပါ
