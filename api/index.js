@@ -17,8 +17,8 @@ module.exports = async (req, res) => {
     // Live Data အတွက် Variable များ တည်ဆောက်ခြင်း
     let timeData = { datetime: null, date: null, time: null };
     let marketStatus = "null";
-    let set = "-";
-    let value = "-";
+    let set = "null";
+    let value = "null";
     let twod = "null";
     let dataSource = "unknown";
 
@@ -105,7 +105,7 @@ module.exports = async (req, res) => {
     }
 
     // [SECTION 3] BACKUP SCRAPING - Home Page မရပါက Overview Page မှ ထပ်ဆွဲခြင်း
-    if (!success || set === "-" || value === "-") {
+    if (!success || set === "null" || value === "null") {
         try {
             const backupUrl = 'https://www.set.or.th/en/market/index/set/overview';
             const response = await axios.get(backupUrl, { headers, timeout: 6000 });
@@ -125,11 +125,11 @@ module.exports = async (req, res) => {
 
     // [SECTION 4] 2D DATA CALCULATION - လိုက်ဗ် 2D ဂဏန်းတွက်ချက်ခြင်း
     try {
-        if (set !== "-") {
+        if (set !== "null") {
             const setLastDigit = set.slice(-1); 
             let valueBeforeDecimalDigit = "-";
 
-            if (value !== "-" && value.includes('.')) {
+            if (value !== "null" && value.includes('.')) {
                 const decimalIndex = value.indexOf('.');
                 valueBeforeDecimalDigit = value.charAt(decimalIndex - 1); 
             }
