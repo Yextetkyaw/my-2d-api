@@ -141,7 +141,7 @@ module.exports = async (req, res) => {
         }
     } catch (e) {}
 
-    // [SECTION 6] REDIS DATABASE OPERATIONS - ဒေတာဘေ့စ် သိမ်းဆည်း/ထုတ်ယူခြင်း
+    // [SECTION 5] REDIS DATABASE OPERATIONS - ဒေတာဘေ့စ် သိမ်းဆည်း/ထုတ်ယူခြင်း
     try {
         let latestHistory = await redis.lindex('2d_history_list', 0);
         const hasHistoryInDb = await redis.exists('2d_history_list');
@@ -247,7 +247,7 @@ module.exports = async (req, res) => {
     const finalNoonResult = (noon_result && noon_result.set) ? noon_result : defaultResult;
     const finalEveningResult = (evening_result && evening_result.set) ? evening_result : defaultResult;
 
-    // [SECTION 7] FINAL RESPONSE - ကာစတမ်မာထံ JSON အဖြေ ပြန်လည်ပေးပို့ခြင်း
+    // [SECTION 6] FINAL RESPONSE - ကာစတမ်မာထံ JSON အဖြေ ပြန်လည်ပေးပို့ခြင်း
     return res.status(200).json({
         live: {
             data_source: dataSource,
