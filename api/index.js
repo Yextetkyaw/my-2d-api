@@ -1,4 +1,4 @@
-const axios = require('axios');
+c axios = require('axios');
 const cheerio = require('cheerio');
 const { Redis } = require('@upstash/redis');
 
@@ -54,7 +54,10 @@ module.exports = async (req, res) => {
             timeData = {
                 datetime: timeResponse.data.formatted_datetime,
                 date: timeResponse.data.date,
-                time: timeResponse.data.time
+                time: timeResponse.data.time,
+                day_number: timeResponse.data.day,
+                month_name: timeResponse.data.month_name,
+                day_name:timeResponse.data.day_of_week
             };
         }
     } catch (e) {}
