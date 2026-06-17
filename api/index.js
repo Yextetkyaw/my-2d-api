@@ -89,18 +89,18 @@ module.exports = async (req, res) => {
                     const holidays = holidayResponse.data;
                     
                     // Time API မှ ဒေတာများကို စာလုံးအသေး ပြောင်းခြင်း နှင့် ရှေ့က သုည (0) ဖြုတ်ခြင်း
-                    const timeMonth = timeResponse.data.month_name ? timeResponse.data.month_name.toLowerCase() : "";
-                    const timeDayOfWeek = dayOfWeek ? dayOfWeek.toLowerCase() : "";
-                    const timeDay = timeResponse.data.day ? parseInt(timeResponse.data.day, 10) : null; // 01 ဖြစ်နေရင် 1 ပြောင်းရန်
+                    const tMonth = timeResponse.data.month_name ? timeResponse.data.month_name.toLowerCase() : "";
+                    const tDayName = dayOfWeek ? dayOfWeek.toLowerCase() : "";
+                    const tDay = timeResponse.data.day ? parseInt(timeResponse.data.day, 10) : null; // 01 ဖြစ်နေရင် 1 ပြောင်းရန်
 
                     // Holiday List ထဲမှာ ကိုက်ညီတာ ရှိမရှိ Loop ပတ်စစ်ဆေးခြင်း
                     const matchHoliday = holidays.find(h => {
                         // Holiday API မှ ဒေတာများကို စာလုံးအသေး ပြောင်းခြင်း နှင့် ရှေ့က သုည (0) ဖြုတ်ခြင်း
                         const hMonth = h.month ? h.month.toLowerCase() : "";
-                        const hDay = h.day ? h.day.toLowerCase() : "";
-                        const hDate = h.date ? parseInt(h.date, 10) : null; // 01 ဖြစ်နေရင် 1 ပြောင်းရန်
+                        const hDayName = h.day ? h.day.toLowerCase() : "";
+                        const hDay = h.date ? parseInt(h.date, 10) : null; // 01 ဖြစ်နေရင် 1 ပြောင်းရန်
 
-                        return timeMonth === hMonth && timeDay === hDate && timeDayOfWeek === hDay;
+                        return tMonth === hMonth && tDay === hDay && tDayName === hDayName;
                     });
 
                     if (matchHoliday) {
