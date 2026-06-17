@@ -109,7 +109,9 @@ try {
                 });
 
                 if (matchHoliday) {
-                    isHoliday = true; // အားလုံးကွက်တိကိုက်ညီရင် ပိတ်ရက်ဟု သတ်မှတ်
+                    isHoliday = true; 
+                    holidayName = matchHoliday.holiday_name;
+                    offDay = matchHoliday.offDay; 
                 }
             }
         }
