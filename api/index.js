@@ -189,10 +189,10 @@ module.exports = async (req, res) => {
             latestHistory = null;
         }
 
-        const isNewDataTimeRange = currentTime && currentTime >= "09:30:00" && currentTime <= "16:31:00";
+        const isNewDataTimeRange = currentTime && currentTime >= "09:29:00" && currentTime <= "16:31:00";
         
         // live ဒေတာ အပြောင်းအလဲရှိပါက History List ထဲသို့ အသစ်တိုးမြှင့်ထည့်သွင်းခြင်း
-        if (twod && twod !== "null" && !twod.includes('-') && !isHoliday && isNewDataTimeRange) {
+        if (!isHoliday && isNewDataTimeRange && (twod && twod !== "null") && !twod.includes('-')) {
             let isDataChanged = true;
 
             if (latestHistory) {
