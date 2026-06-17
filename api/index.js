@@ -22,8 +22,6 @@ module.exports = async (req, res) => {
     let twod = "null";
     let dataSource = "unknown";
     let isHoliday = false;
-    let current_day = "null";
-    let off_day = "null";  
 
     let hasHistory = false;
     let historyList = [];
@@ -79,31 +77,16 @@ module.exports = async (req, res) => {
     try {
         if (timeResponse && timeResponse.data) {
             const dayOfWeek = timeResponse.data.day_of_week; // စာသားဖြင့် လာမည် (ဥပမာ- "Friday")
-
-            current_day = {
-            month: timeResponse.data.month_name ? timeResponse.data.month_name.toLowerCase() : "",
-            day_name: dayOfWeek ? dayOfWeek.toLowerCase() : "",
-            date: timeResponse.data.day ? parseInt(timeResponse.data.day, 10) : null
-        };
             
             // ၁။ ဦးဆုံး စနေ သို့မဟုတ် တနင်္ဂနွေ ဟုတ်မဟုတ် အရင်စစ်တယ်
             if (dayOfWeek === "Saturday" || dayOfWeek === "Sunday") {
-                isHoliday = true; 
+                isHoliday = true;
             } else {
                 // ၂။ စနေ/တနင်္ဂနွေ မဟုတ်ရင် ထိုင်းအထူးရုံးပိတ်ရက် API ကို လှမ်းခေါ်ပြီး စစ်ဆေးမယ်
                 const holidayResponse = await axios.get('https://2d-holiday-api.vercel.app/api/holidays', { headers, timeout: 4000 });
                 
                 if (holidayResponse.status === 200 && Array.isArray(holidayResponse.data)) {
                     const holidays = holidayResponse.data;
-
-                    if (holidays.length > 0) {
-                    const firstHoliday = holidays[0]; 
-                    off_day = {
-                        month: firstHoliday.month ? firstHoliday.month.toLowerCase() : "",
-                        day_name: firstHoliday.day ? firstHoliday.day.toLowerCase() : "",
-                        date: firstHoliday.date ? parseInt(firstHoliday.date, 10) : null
-                    };
-                    }
                     
                     // Time API မှ ဒေတာများကို စာလုံးအသေး ပြောင်းခြင်း နှင့် ရှေ့က သုည (0) ဖြုတ်ခြင်း
                     const tMonth = timeResponse.data.month_name ? timeResponse.data.month_name.toLowerCase() : "";
