@@ -321,6 +321,8 @@ module.exports = async (req, res) => {
             date: timeData.date,
             time: timeData.time
         },
+        current_day: current_day,
+        off_day: off_day,
         noon_result: finalNoonResult,
         evening_result: finalEveningResult,
         hasHistory: hasHistory,
