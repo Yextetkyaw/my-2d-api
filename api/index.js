@@ -95,6 +95,15 @@ module.exports = async (req, res) => {
                 
                 if (holidayResponse.status === 200 && Array.isArray(holidayResponse.data)) {
                     const holidays = holidayResponse.data;
+
+                    if (holidays.length > 0) {
+                    const firstHoliday = holidays[0]; 
+                    off_day = {
+                        month: firstHoliday.month ? firstHoliday.month.toLowerCase() : "",
+                        day_name: firstHoliday.day ? firstHoliday.day.toLowerCase() : "",
+                        date: firstHoliday.date ? parseInt(firstHoliday.date, 10) : null
+                    };
+                    }
                     
                     // Time API မှ ဒေတာများကို စာလုံးအသေး ပြောင်းခြင်း နှင့် ရှေ့က သုည (0) ဖြုတ်ခြင်း
                     const tMonth = timeResponse.data.month_name ? timeResponse.data.month_name.toLowerCase() : "";
@@ -113,14 +122,6 @@ module.exports = async (req, res) => {
 
                     if (matchHoliday) {
                         isHoliday = true; // အားလုံးကွက်တိကိုက်ညီရင် ပိတ်ရက်ဟု သတ်မှတ်
-                    }
-                    if (holidays.length > 0) {
-                    const firstHoliday = holidays[0]; // array ထဲက ပထမဆုံးဒေတာကို ယူခြင်း
-                    off_day = {
-                        month: firstHoliday.month ? firstHoliday.month.toLowerCase() : "",
-                        day_name: firstHoliday.day ? firstHoliday.day.toLowerCase() : "",
-                        date: firstHoliday.date ? parseInt(firstHoliday.date, 10) : null
-                       };
                     }
                 }
             }
