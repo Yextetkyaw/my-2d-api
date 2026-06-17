@@ -225,7 +225,7 @@ try {
                 const newHistoryItem = {
                     set: set,
                     value: value,
-                    "2d": twod,
+                    2d: twod,
                     datetime: timeData.datetime,
                     date: timeData.date,
                     time: timeData.time,
