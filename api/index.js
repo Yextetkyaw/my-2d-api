@@ -33,7 +33,7 @@ module.exports = async (req, res) => {
         set: "--",
         value: "--",
         "2d": "--",
-        datသိမ်းဆည်းခြင်းဆည်းခြင်း: "--",
+        datetime: "--",
         date: "--",
         time: "--",
         history_id: "--"
