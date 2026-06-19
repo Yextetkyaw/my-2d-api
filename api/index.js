@@ -247,7 +247,7 @@ module.exports = async (req, res) => {
         let storedEvening = await redis.get('evening_result');
         if (storedEvening && typeof storedEvening === 'string') storedEvening = JSON.parse(storedEvening);
 
-        if (marketStatus && marketStatus.includes("Open1")) {
+        if (marketStatus && marketStatus.includes("Pre-Open1")) {
             if (storedNoon && timeData.date && storedNoon.date !== timeData.date) {
                 await redis.del('noon_result');
                 storedNoon = null;
